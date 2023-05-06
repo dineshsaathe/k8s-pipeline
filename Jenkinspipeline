@@ -1,0 +1,35 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout external proj') {
+			steps {
+				git branch: 'main',
+					credentialsId: 'git',
+					url: 'https://github.com/dineshsaathe/k8s-pipeline.git'
+	
+				sh "ls -lat"
+			}
+		}
+		stage('Docker Build and Push') {
+		    environment {
+				DOCKERHUB_CREDENTIALS = credentials('dockerlogin')
+			}
+            steps {
+                script {
+                    sh 'docker build -t dineshsathe/nginx:v1 .'
+					sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+					sh 'docker push dineshsathe/nginx:v1'
+                }
+            }
+        }
+		stage('Deploying nginx container to Kubernetes') {
+			steps {
+				script {
+				    sh '/bin/kubectl apply -f deployment.yml'
+					sh '/bin/kubectl apply -f service.yml'
+				}
+			}
+		}
+    }
+}
